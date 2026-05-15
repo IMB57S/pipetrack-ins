@@ -8,8 +8,8 @@
 
 // ── CONFIGURACIÓN ─────────────────────────────
 // Estas variables se sobreescriben desde localStorage (panel Config)
-let SUPABASE_URL = localStorage.getItem('pt_url') || 'https://qimzodicacsmrbfnnjvc.supabase.co';
-let SUPABASE_KEY = localStorage.getItem('pt_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXpvZGljYWNzbXJiZm5uanZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzUwMzgsImV4cCI6MjA5MDY1MTAzOH0.bid4FHqRDrYBBYIhpuFwvGwbY5xWFVEBkacNxvrb1UY';
+let SUPABASE_URL = 'https://qimzodicacsmrbfnnjvc.supabase.co';
+let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXpvZGljYWNzbXJiZm5uanZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzUwMzgsImV4cCI6MjA5MDY1MTAzOH0.bid4FHqRDrYBBYIhpuFwvGwbY5xWFVEBkacNxvrb1UY';
 
 // ── CLIENTE HTTP BASE ─────────────────────────
 async function supaFetch(endpoint, options = {}) {
