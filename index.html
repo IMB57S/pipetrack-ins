@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PipeTrack — Sistema de Integridad de Tuberías</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⬡</div>
+    <div class="logo-text">PIPE<span>TRACK</span></div>
+  </div>
+
+  <div class="nav-section-label">PRINCIPAL</div>
+  <a href="#" class="nav-item active" data-page="dashboard">
+    <span class="nav-icon">◈</span>Dashboard
+  </a>
+  <a href="#" class="nav-item" data-page="mapa">
+    <span class="nav-icon">◉</span>Mapa de Tuberías
+  </a>
+  <a href="#" class="nav-item" data-page="tubos">
+    <span class="nav-icon">▣</span>Inventario
+  </a>
+  <a href="#" class="nav-item" data-page="inspecciones">
+    <span class="nav-icon">◧</span>Inspecciones
+  </a>
+
+  <div class="nav-section-label">ANÁLISIS</div>
+  <a href="#" class="nav-item" data-page="alertas">
+    <span class="nav-icon">⚠</span>Alertas
+    <span class="nav-badge" id="badge-alertas">0</span>
+  </a>
+  <a href="#" class="nav-item" data-page="reportes">
+    <span class="nav-icon">◫</span>Reportes
+  </a>
+
+  <div class="nav-section-label">SISTEMA</div>
+  <a href="#" class="nav-item" data-page="config">
+    <span class="nav-icon">◎</span>Configuración
+  </a>
+
+  <div class="sidebar-bottom">
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">IN</div>
+      <div class="user-info">
+        <div class="user-name" id="user-name">Inspector</div>
+        <div class="user-role" id="user-role">Campo</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">⏻</button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content" id="main-content">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="sync-indicator" id="sync-indicator">
+        <span class="sync-dot"></span>
+        <span id="sync-label">Sincronizado</span>
+      </div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: DASHBOARD
+  ════════════════════════════════════════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-label">VISIÓN GENERAL</div>
+        <div class="page-title">Estado de Integridad</div>
+      </div>
+      <div class="page-actions">
+        <select class="select-control" id="filter-locacion">
+          <option value="">Todas las locaciones</option>
+        </select>
+        <button class="btn btn-primary" onclick="openModal('modal-inspeccion')">+ Nueva Inspección</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card" id="kpi-total">
+        <div class="kpi-top">
+          <div class="kpi-label">TOTAL TUBOS</div>
+          <div class="kpi-icon">▣</div>
+        </div>
+        <div class="kpi-value" id="kpi-val-total">—</div>
+        <div class="kpi-sub">Inventario registrado</div>
+        <div class="kpi-bar"><div class="kpi-fill" style="width:100%;background:var(--accent)"></div></div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-top">
+          <div class="kpi-label">ESTADO BUENO</div>
+          <div class="kpi-icon" style="color:var(--green)">●</div>
+        </div>
+        <div class="kpi-value green" id="kpi-val-bueno">—</div>
+        <div class="kpi-sub" id="kpi-pct-bueno">— del total</div>
+        <div class="kpi-bar"><div class="kpi-fill green" id="kpi-bar-bueno" style="width:0%"></div></div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-top">
+          <div class="kpi-label">ESTADO REGULAR</div>
+          <div class="kpi-icon" style="color:var(--yellow)">●</div>
+        </div>
+        <div class="kpi-value yellow" id="kpi-val-regular">—</div>
+        <div class="kpi-sub" id="kpi-pct-regular">— del total</div>
+        <div class="kpi-bar"><div class="kpi-fill yellow" id="kpi-bar-regular" style="width:0%"></div></div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-top">
+          <div class="kpi-label">ESTADO CRÍTICO</div>
+          <div class="kpi-icon blink" style="color:var(--red)">●</div>
+        </div>
+        <div class="kpi-value red" id="kpi-val-critico">—</div>
+        <div class="kpi-sub" id="kpi-pct-critico">— del total</div>
+        <div class="kpi-bar"><div class="kpi-fill red" id="kpi-bar-critico" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM GRID -->
+    <div class="dash-grid">
+      <!-- Tabla reciente -->
+      <div class="panel panel-wide">
+        <div class="panel-header">
+          <div class="panel-title">Inspecciones Recientes</div>
+          <button class="btn-link" onclick="showPage('inspecciones')">Ver todas →</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="tabla-recientes">
+            <thead>
+              <tr>
+                <th>ID Tubo</th>
+                <th>Locación</th>
+                <th>Espesor (mm)</th>
+                <th>Corrosión</th>
+                <th>Estado</th>
+                <th>Inspector</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-recientes">
+              <tr><td colspan="7" class="loading-cell">Cargando datos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Alertas críticas -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚠ Alertas Activas</div>
+          <button class="btn-link" onclick="showPage('alertas')">Ver todas →</button>
+        </div>
+        <div id="alertas-list">
+          <div class="loading-cell">Cargando alertas...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: MAPA
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-mapa">
+    <div class="page-header">
+      <div>
+        <div class="page-label">GEOESPACIAL</div>
+        <div class="page-title">Mapa de Tuberías</div>
+      </div>
+      <div class="page-actions">
+        <div class="legend-chips">
+          <span class="chip green">● Bueno</span>
+          <span class="chip yellow">● Regular</span>
+          <span class="chip red">● Crítico</span>
+        </div>
+      </div>
+    </div>
+    <div class="map-container">
+      <div id="map" style="width:100%;height:100%;border-radius:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: INVENTARIO
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-tubos">
+    <div class="page-header">
+      <div>
+        <div class="page-label">BASE DE DATOS</div>
+        <div class="page-title">Inventario de Tubería</div>
+      </div>
+      <div class="page-actions">
+        <input type="text" class="search-input" placeholder="Buscar ID, locación, grado..." id="search-tubos" oninput="filterTubos()">
+        <button class="btn btn-primary" onclick="openModal('modal-tubo')">+ Agregar Tubo</button>
+      </div>
+    </div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="data-table" id="tabla-tubos">
+          <thead>
+            <tr>
+              <th>ID Tubo</th>
+              <th>Locación</th>
+              <th>Línea</th>
+              <th>Ø Nom (pulg)</th>
+              <th>Esp. Nom (mm)</th>
+              <th>Esp. Mín (mm)</th>
+              <th>Grado</th>
+              <th>Clase Insp.</th>
+              <th>Próx. Insp.</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-tubos">
+            <tr><td colspan="10" class="loading-cell">Cargando inventario...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: INSPECCIONES
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-inspecciones">
+    <div class="page-header">
+      <div>
+        <div class="page-label">REGISTRO DE CAMPO</div>
+        <div class="page-title">Inspecciones</div>
+      </div>
+      <div class="page-actions">
+        <select class="select-control" id="filter-estado">
+          <option value="">Todos los estados</option>
+          <option value="Bueno">Bueno</option>
+          <option value="Regular">Regular</option>
+          <option value="Crítico">Crítico</option>
+        </select>
+        <button class="btn btn-primary" onclick="openModal('modal-inspeccion')">+ Nueva Inspección</button>
+      </div>
+    </div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID Inspección</th>
+              <th>ID Tubo</th>
+              <th>Locación</th>
+              <th>Esp. Med (mm)</th>
+              <th>Margen (mm)</th>
+              <th>CR (mm/año)</th>
+              <th>Vida Rem. (años)</th>
+              <th>Corrosión</th>
+              <th>Estado</th>
+              <th>Inspector</th>
+              <th>Fecha</th>
+              <th>Fotos</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-inspecciones">
+            <tr><td colspan="12" class="loading-cell">Cargando inspecciones...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: ALERTAS
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-alertas">
+    <div class="page-header">
+      <div>
+        <div class="page-label">SISTEMA DE ALERTAS</div>
+        <div class="page-title">Alertas & Notificaciones</div>
+      </div>
+    </div>
+    <div id="alertas-full-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: REPORTES
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-reportes">
+    <div class="page-header">
+      <div>
+        <div class="page-label">EXPORTACIÓN</div>
+        <div class="page-title">Reportes</div>
+      </div>
+    </div>
+    <div class="dash-grid">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Exportar Datos</div></div>
+        <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+          <button class="btn btn-ghost" style="justify-content:flex-start;gap:12px" onclick="exportCSV('tubos')">
+            ↓ &nbsp;Inventario de Tubería (CSV)
+          </button>
+          <button class="btn btn-ghost" style="justify-content:flex-start;gap:12px" onclick="exportCSV('inspecciones')">
+            ↓ &nbsp;Registro de Inspecciones (CSV)
+          </button>
+          <button class="btn btn-ghost" style="justify-content:flex-start;gap:12px" onclick="exportCSV('alertas')">
+            ↓ &nbsp;Log de Alertas (CSV)
+          </button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Resumen del Sistema</div></div>
+        <div id="resumen-sistema" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:var(--muted)">
+          Cargando...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: CONFIG
+  ════════════════════════════════════════════ -->
+  <div class="page" id="page-config">
+    <div class="page-header">
+      <div>
+        <div class="page-label">SISTEMA</div>
+        <div class="page-title">Configuración</div>
+      </div>
+    </div>
+    <div class="dash-grid">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Conexión a Base de Datos</div></div>
+        <div class="form-group">
+          <label class="form-label">Supabase Project URL</label>
+          <input type="text" class="form-input" id="cfg-url" placeholder="https://xxx.supabase.co">
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key (anon)</label>
+          <input type="password" class="form-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1...">
+        </div>
+        <button class="btn btn-primary" onclick="saveConfig()">Guardar y Reconectar</button>
+        <div id="config-status" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Umbrales API 570</div></div>
+        <div class="form-group">
+          <label class="form-label">Margen crítico sobre t_min (mm)</label>
+          <input type="number" class="form-input" id="cfg-margen" value="1.0" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vida remanente alerta Regular (años)</label>
+          <input type="number" class="form-input" id="cfg-vida" value="3">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CR máxima antes de alerta (mm/año)</label>
+          <input type="number" class="form-input" id="cfg-cr" value="0.5" step="0.1">
+        </div>
+        <button class="btn btn-ghost" onclick="saveThresholds()">Guardar Umbrales</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════
+     LOGIN OVERLAY
+════════════════════════════════════════════ -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark big">⬡</div>
+      <div class="login-title">PIPE<span>TRACK</span></div>
+      <div class="login-sub">Sistema de Integridad de Tuberías</div>
+    </div>
+    <div id="login-error" class="login-error" style="display:none"></div>
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" class="form-input" id="login-email" placeholder="inspector@empresa.com" value="demo@pipetrack.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-input" id="login-pass" placeholder="••••••••" value="demo1234">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="login()">
+      Ingresar al Sistema
+    </button>
+    <div style="margin-top:16px;font-size:11px;color:var(--muted);text-align:center;font-family:'JetBrains Mono',monospace">
+      DEMO: demo@pipetrack.com / demo1234
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODAL: NUEVA INSPECCIÓN
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-inspeccion" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nueva Inspección de Campo</div>
+      <button class="modal-close" onclick="closeModal('modal-inspeccion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">ID Tubo <span class="req">*</span></label>
+          <select class="form-input" id="insp-tubo-id">
+            <option value="">Seleccionar tubo...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Método de Medición</label>
+          <select class="form-input" id="insp-metodo">
+            <option>UT</option><option>RT</option><option>MT</option><option>PT</option><option>VT</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Espesor Medido (mm) <span class="req">*</span></label>
+          <input type="number" class="form-input" id="insp-espesor" step="0.1" placeholder="ej: 7.2" oninput="calcularInspeccion()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Espesor Medición Anterior (mm)</label>
+          <input type="number" class="form-input" id="insp-esp-prev" step="0.1" placeholder="ej: 7.8" oninput="calcularInspeccion()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Meses entre mediciones</label>
+          <input type="number" class="form-input" id="insp-meses" placeholder="ej: 12" oninput="calcularInspeccion()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Corrosión Visual</label>
+          <select class="form-input" id="insp-corrosion">
+            <option>Sin daño</option><option>Leve</option><option>Moderada</option><option>Severa</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CÁLCULOS EN TIEMPO REAL -->
+      <div class="calc-panel" id="calc-panel" style="display:none">
+        <div class="calc-title">Cálculos API 570 — En tiempo real</div>
+        <div class="calc-grid">
+          <div class="calc-item">
+            <div class="calc-label">Margen sobre t_min</div>
+            <div class="calc-value" id="calc-margen">—</div>
+          </div>
+          <div class="calc-item">
+            <div class="calc-label">Tasa corrosión (mm/año)</div>
+            <div class="calc-value" id="calc-cr">—</div>
+          </div>
+          <div class="calc-item">
+            <div class="calc-label">Vida remanente (años)</div>
+            <div class="calc-value" id="calc-vida">—</div>
+          </div>
+          <div class="calc-item">
+            <div class="calc-label">Estado calculado</div>
+            <div class="calc-value" id="calc-estado">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Estado General <span class="req">*</span></label>
+          <select class="form-input" id="insp-estado">
+            <option>Bueno</option><option>Regular</option><option>Crítico</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acción Requerida</label>
+          <select class="form-input" id="insp-accion">
+            <option>Ninguna</option><option>Monitorear</option><option>Mantenimiento</option><option>Reemplazar</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones del Inspector</label>
+        <textarea class="form-input" id="insp-notas" rows="3" placeholder="Describe condiciones, ubicación del deterioro, observaciones técnicas..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto de Anomalía (URL o subir)</label>
+        <input type="text" class="form-input" id="insp-foto" placeholder="https://... o dejar vacío">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-inspeccion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarInspeccion()">Guardar Inspección</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODAL: NUEVO TUBO
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-tubo" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Nuevo Tubo</div>
+      <button class="modal-close" onclick="closeModal('modal-tubo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">ID Tubo <span class="req">*</span></label>
+          <input type="text" class="form-input" id="tubo-id" placeholder="TUB-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Locación <span class="req">*</span></label>
+          <select class="form-input" id="tubo-locacion">
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Código de Línea</label>
+          <input type="text" class="form-input" id="tubo-linea" placeholder="LP-GAS-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Grado de Material</label>
+          <select class="form-input" id="tubo-grado">
+            <option>X42</option><option>X52</option><option>X60</option><option>X65</option><option>X70</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Diámetro Nominal (pulg)</label>
+          <input type="number" class="form-input" id="tubo-diam" placeholder="6" step="0.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Espesor Nominal (mm)</label>
+          <input type="number" class="form-input" id="tubo-esp-nom" placeholder="7.11" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Espesor Mínimo t_min (mm)</label>
+          <input type="number" class="form-input" id="tubo-esp-min" placeholder="5.2" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clase de Inspección RBI</label>
+          <select class="form-input" id="tubo-clase">
+            <option>Clase 1</option><option>Clase 2</option><option>Clase 3</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Latitud GPS</label>
+          <input type="number" class="form-input" id="tubo-lat" placeholder="-10.12345" step="0.00001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitud GPS</label>
+          <input type="number" class="form-input" id="tubo-lon" placeholder="-75.45678" step="0.00001">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de Instalación</label>
+        <input type="date" class="form-input" id="tubo-fecha">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-tubo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTubo()">Registrar Tubo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet para el mapa -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
