@@ -588,36 +588,69 @@ function saveThresholds() {
 }
 
 // ── AUTH ───────────────────────────────────────
+// ── AUTH CORREGIDO ─────────────────────────────
 async function login() {
-  const email = document.getElementById('login-email')?.value;
+  const email = document.getElementById('login-email')?.value?.trim();
   const pass  = document.getElementById('login-pass')?.value;
   const errEl = document.getElementById('login-error');
 
-  // DEMO mode
+  if (!email || !pass) {
+    return showToast('Por favor, ingresa correo y contraseña', 'error');
+  }
+
+  // Ocultar error previo si existe
+  if (errEl) errEl.style.display = 'none';
+
+  // 1. MODO DEMO
   if (email === 'demo@pipetrack.com' && pass === 'demo1234') {
     localStorage.setItem('pt_demo', 'true');
     localStorage.setItem('pt_token', 'demo');
     localStorage.setItem('pt_user', JSON.stringify({ email, user_metadata: { rol: 'Demo' } }));
+    
     document.getElementById('login-overlay').style.display = 'none';
-    initApp();
+    await initApp();
     return;
   }
 
+  // 2. MODO PRODUCCIÓN (Supabase Real)
   try {
-    if (errEl) errEl.style.display = 'none';
-    await Auth.login(email, pass);
+    // Forzamos a quitar el modo demo del almacenamiento local antes de intentar conectar
+    localStorage.removeItem('pt_demo');
+    
+    // Cambiar texto del botón provisionalmente para dar feedback visual
+    const loginBtn = document.querySelector('.login-card .btn-primary');
+    const originalText = loginBtn ? loginBtn.textContent : 'Ingresar al Sistema';
+    if (loginBtn) loginBtn.textContent = 'Autenticando...';
+
+    // Llamada asíncrona a tu api.js
+    const sessionData = await Auth.login(email, pass);
+    
+    // Si la API no lanzó error pero no devolvió datos válidos
+    if (!sessionData) {
+      throw new Error('No se recibió una sesión válida del servidor.');
+    }
+
+    // Ocultar login e inicializar el sistema de integridad
     document.getElementById('login-overlay').style.display = 'none';
-    initApp();
+    await initApp();
+    showToast('Sesión iniciada correctamente');
+
   } catch (e) {
-    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+    console.error('Error detectado en Login:', e);
+    
+    // Restaurar el botón si falla
+    const loginBtn = document.querySelector('.login-card .btn-primary');
+    if (loginBtn) loginBtn.textContent = 'Ingresar al Sistema';
+
+    // Mostrar el error directamente en la tarjeta de login
+    if (errEl) {
+      errEl.textContent = e.message || 'Error de conexión con Supabase';
+      errEl.style.display = 'block';
+    } else {
+      showToast(e.message, 'error');
+    }
   }
 }
-
-function logout() {
-  localStorage.removeItem('pt_demo');
-  Auth.logout();
-}
-
 // ── NAVEGACIÓN ─────────────────────────────────
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
