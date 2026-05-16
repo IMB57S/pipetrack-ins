@@ -64,8 +64,7 @@ const Auth = {
   },
 
   isLoggedIn() {
-    // Para DEMO sin Supabase real, aceptar credenciales locales
-    return !!localStorage.getItem('pt_token') || !!localStorage.getItem('pt_demo');
+    return !!localStorage.getItem('pt_token');
   }
 };
 
@@ -232,5 +231,5 @@ const DemoData = {
 
 // ── MODO DEMO: redirige llamadas si no hay Supabase ──
 function isDemo() {
-  return localStorage.getItem('pt_demo') === 'true' || SUPABASE_URL.includes('TU-PROYECTO');
+  return false;
 }
