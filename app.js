@@ -174,23 +174,24 @@ function renderTablaInspecciones(filtroEstado = '') {
   const tbody = document.getElementById('tbody-inspecciones');
   if (!tbody) return;
 
-  tbody.innerHTML = data.length
-    ? data.map(i => `
-        <tr>
-          <td><span class="tube-id" style="color:var(--muted);font-size:11px">${i.id || '—'}</span></td>
-          <td><span class="tube-id">${i.tubo_id || i.id_tubo}</span></td>
-          <td>${i.tubos?.locaciones?.nombre || 'General'}</td>
-          <td style="font-weight:600;color:${colorEspesor(i.espesor_med_mm, i.espesor_min_mm)}">${Number(i.espesor_med_mm).toFixed(2)}</td>
-          <td>${margen(i)} mm</td>
-          <td>${i.tasa_corrosion_mmpa ? Number(i.tasa_corrosion_mmpa).toFixed(3) : '—'}</td>
-          <td>${i.vida_remanente_anios ? Number(i.vida_remanente_anios).toFixed(1) : '—'}</td>
-          <td>${i.corrosion_visual || '—'}</td>
-          <td>${estadoPill(i.estado_general)}</td>
-          <td>${i.inspector || '—'}</td>
-          <td>${formatDate(i.fecha_inspeccion)}</td>
-          <td>${i.foto_anomalia_1 ? `<a href="${i.foto_anomalia_1}" target="_blank" style="color:var(--accent)">📷 Ver</a>` : '—'}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="12" class="loading-cell">Sin registros de inspección</td></tr>';
+ // Dentro de renderTablaInspecciones
+tbody.innerHTML = data.length
+  ? data.map(i => `
+      <tr>
+        <td><span class="tube-id" style="color:var(--muted);font-size:11px">${i.id || '—'}</span></td>
+        <td><span class="tube-id">${i.tubo_id || i.id_tubo}</span></td>
+        <td>${i.tubos?.locaciones?.nombre || 'General'}</td>
+        <td style="font-weight:600;color:${colorEspesor(i.espesor_med_pulg, i.espesor_min_pulg)}">${Number(i.espesor_med_pulg).toFixed(3)}"</td>
+        <td>${i.margen_corrosion_pulg ? Number(i.margen_corrosion_pulg).toFixed(3) + '"' : '—'}</td>
+        <td>${i.tasa_corrosion_mpy ? Number(i.tasa_corrosion_mpy).toFixed(1) + ' mpy' : '—'}</td>
+        <td>${i.vida_remanente_anios ? Number(i.vida_remanente_anios).toFixed(1) + ' años' : '—'}</td>
+        <td>${i.corrosion_visual || '—'}</td>
+        <td>${estadoPill(i.estado_general)}</td>
+        <td>${i.inspector || '—'}</td>
+        <td>${formatDate(i.fecha_inspeccion)}</td>
+        <td>${i.foto_anomalia_1 ? `<a href="${i.foto_anomalia_1}" target="_blank" style="color:var(--accent)">📷 Ver</a>` : '—'}</td>
+      </tr>`).join('')
+  : '<tr><td colspan="12" class="loading-cell">Sin registros de inspección</td></tr>';
 }
 
 document.addEventListener('change', (e) => {
@@ -310,25 +311,34 @@ function renderMapPins() {
 // ── ASISTENTE DE CÁLCULO API 570 ────────────────
 function calcularInspeccion() {
   const tuboId = document.getElementById('insp-tubo-id')?.value;
-  const espMed = parseFloat(document.getElementById('insp-espesor')?.value);
-  const espPrev = parseFloat(document.getElementById('insp-esp-prev')?.value);
+  const espMed = parseFloat(document.getElementById('insp-espesor')?.value);    // Entrada en pulgadas
+  const espPrev = parseFloat(document.getElementById('insp-esp-prev')?.value); // Entrada en pulgadas
   const meses = parseFloat(document.getElementById('insp-meses')?.value);
 
   if (!espMed || !tuboId) { document.getElementById('calc-panel').style.display = 'none'; return; }
 
   const tubo = state.tubos.find(t => t.id_tubo === tuboId);
-  const espMin = tubo?.espesor_min_mm || 4.0;
+  const espMin = tubo?.espesor_min_pulg || 0.150; // t_min por defecto en pulgadas
 
-  const margenVal = espMed - espMin;
-  const crVal = (espPrev && meses > 0) ? ((espPrev - espMed) / (meses / 12)) : null;
-  const vidaVal = (crVal && crVal > 0) ? (margenVal / crVal) : null;
+  const margenVal = espMed - espMin; // Margen en pulgadas
+  
+  // Cálculo de CR (Pulgadas ganadas/perdidas por año)
+  const crValPulgAnio = (espPrev && meses > 0) ? ((espPrev - espMed) / (meses / 12)) : null;
+  
+  // Conversión a Milésimas de pulgada por año (mpy)
+  const crValMpy = crValPulgAnio !== null ? (crValPulgAnio * 1000) : null;
+  
+  // Vida Remanente: Margen (pulg) / CR (pulg/año)
+  const vidaVal = (crValPulgAnio && crValPulgAnio > 0) ? (margenVal / crValPulgAnio) : null;
 
-  const estado = margenVal < state.thresholds.margenCritico ? 'Crítico' : (vidaVal !== null && vidaVal < state.thresholds.vidaAlerta) ? 'Regular' : 'Bueno';
+  // Umbral crítico adaptado (ejemplo: menos de 0.050 pulgadas de margen)
+  const margenCriticoPulg = 0.050; 
+  const estado = margenVal < margenCriticoPulg ? 'Crítico' : (vidaVal !== null && vidaVal < 3.0) ? 'Regular' : 'Bueno';
   const colors = { 'Bueno': 'var(--green)', 'Regular': 'var(--yellow)', 'Crítico': 'var(--red)' };
 
   document.getElementById('calc-panel').style.display = 'block';
-  document.getElementById('calc-margen').textContent = margenVal.toFixed(2) + ' mm';
-  document.getElementById('calc-cr').textContent = crVal !== null ? crVal.toFixed(3) + ' mm/a' : '—';
+  document.getElementById('calc-margen').textContent = margenVal.toFixed(3) + ' in';
+  document.getElementById('calc-cr').textContent = crValMpy !== null ? crValMpy.toFixed(1) + ' mpy' : '—';
   document.getElementById('calc-vida').textContent = vidaVal !== null ? vidaVal.toFixed(1) + ' años' : '—';
   document.getElementById('calc-estado').textContent = estado;
   document.getElementById('calc-estado').style.color = colors[estado];
@@ -341,13 +351,28 @@ function calcularInspeccion() {
 async function guardarInspeccion() {
   const tuboId = document.getElementById('insp-tubo-id')?.value;
   const espMed = parseFloat(document.getElementById('insp-espesor')?.value);
+  const espPrev = parseFloat(document.getElementById('insp-esp-prev')?.value) || 0;
+  const meses = parseFloat(document.getElementById('insp-meses')?.value) || 0;
   const estado = document.getElementById('insp-estado')?.value;
 
   if (!tuboId || !espMed || !estado) return showToast('Completa los campos (*) requeridos', 'error');
 
+  const tubo = state.tubos.find(t => t.id_tubo === tuboId);
+  const espMin = tubo?.espesor_min_pulg || 0.150;
+  
+  const margenPulg = espMed - espMin;
+  const crPulgAnio = (espPrev > 0 && meses > 0) ? ((espPrev - espMed) / (meses / 12)) : 0;
+  const crMpy = crPulgAnio * 1000;
+  const vidaAnios = (crPulgAnio > 0) ? (margenPulg / crPulgAnio) : null;
+
   const payload = {
     tubo_id: tuboId,
-    espesor_med_mm: espMed,
+    espesor_med_pulg: espMed,
+    espesor_prev_pulg: espPrev > 0 ? espPrev : null,
+    espesor_min_pulg: espMin,
+    margen_corrosion_pulg: margenPulg,
+    tasa_corrosion_mpy: crMpy, // Almacena directamente en mpy
+    vida_remanente_anios: vidaAnios,
     estado_general: estado,
     corrosion_visual: document.getElementById('insp-corrosion')?.value,
     metodo_medicion: document.getElementById('insp-metodo')?.value,
@@ -365,7 +390,7 @@ async function guardarInspeccion() {
     }
     closeModal('modal-inspeccion');
     await loadAllData();
-    showToast('Inspección guardada correctamente');
+    showToast('Inspección registrada con éxito en sistema inglés');
   } catch (e) {
     showToast(e.message, 'error');
   }
